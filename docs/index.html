@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="Haleacas — an offline-first repository intelligence toolkit. A preserved project archive.">
+  <title>Haleacas — Repository intelligence, close to home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: rgba(18, 26, 47, .78);
+      --panel-strong: #131d35;
+      --line: rgba(178, 196, 255, .13);
+      --text: #f3f5ff;
+      --muted: #a3aec9;
+      --soft: #7583a7;
+      --violet: #a99bff;
+      --cyan: #78e3e5;
+      --mint: #9ce6c1;
+      --amber: #f1c98b;
+      --shadow: 0 28px 90px rgba(0,0,0,.35);
+      --radius: 24px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; min-height: 100vh; color: var(--text);
+      background:
+        radial-gradient(ellipse at 14% 2%, rgba(115, 96, 220, .22), transparent 38rem),
+        radial-gradient(ellipse at 88% 22%, rgba(61, 187, 190, .12), transparent 34rem),
+        linear-gradient(180deg, #0b1020 0%, #0d1427 48%, #0a1020 100%);
+      font-family: "DM Sans", sans-serif;
+      line-height: 1.65;
+    }
+    body::before {
+      content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .18;
+      background-image: linear-gradient(rgba(170,190,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(170,190,255,.05) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: linear-gradient(to bottom, black, transparent 82%);
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+    .shell { width: min(1120px, calc(100% - 44px)); margin: 0 auto; position: relative; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:26px 0; }
+    .brand { display:flex; align-items:center; gap:12px; font-family:Manrope,sans-serif; font-weight:800; letter-spacing:-.04em; font-size:1.1rem; }
+    .brand-mark { width:34px; height:34px; display:grid; place-items:center; border:1px solid rgba(169,155,255,.45); border-radius:11px; color:var(--cyan); background:linear-gradient(145deg,rgba(169,155,255,.2),rgba(120,227,229,.08)); box-shadow:0 0 28px rgba(169,155,255,.15); }
+    .nav { display:flex; align-items:center; gap:22px; color:var(--muted); font-size:.9rem; }
+    .nav a:hover { color:var(--text); }
+    .lang-switch { display:flex; padding:4px; gap:3px; border:1px solid var(--line); border-radius:999px; background:rgba(10,16,32,.72); }
+    .lang-switch button { border:0; color:var(--muted); background:transparent; padding:7px 11px; border-radius:999px; cursor:pointer; font-size:.78rem; }
+    .lang-switch button[aria-pressed="true"] { background:#273253; color:white; }
+    .hero { padding:92px 0 78px; display:grid; grid-template-columns:1.15fr .85fr; align-items:center; gap:64px; }
+    .eyebrow { display:inline-flex; align-items:center; gap:9px; color:var(--cyan); border:1px solid rgba(120,227,229,.22); background:rgba(120,227,229,.07); padding:7px 12px; border-radius:999px; font:500 .72rem "DM Mono",monospace; letter-spacing:.07em; text-transform:uppercase; }
+    .dot { width:7px; height:7px; border-radius:50%; background:var(--mint); box-shadow:0 0 12px var(--mint); }
+    h1 { font:800 clamp(3.3rem,8vw,6.7rem)/.98 Manrope,sans-serif; letter-spacing:-.075em; margin:27px 0 22px; }
+    h1 span { display:block; background:linear-gradient(100deg,#fff 8%,#b8b0ff 52%,#80e5df 100%); color:transparent; background-clip:text; -webkit-background-clip:text; }
+    .lead { max-width:610px; color:#bdc7df; font-size:clamp(1.05rem,2vw,1.23rem); line-height:1.8; }
+    .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:32px; }
+    .button { display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:13px 18px; border-radius:13px; font-weight:700; font-size:.9rem; border:1px solid var(--line); transition:transform .2s,border-color .2s,background .2s; }
+    .button:hover { transform:translateY(-2px); border-color:rgba(169,155,255,.5); }
+    .button.primary { color:#11152a; background:linear-gradient(110deg,#b5aaff,#83e3df); border:0; box-shadow:0 12px 35px rgba(133,211,220,.16); }
+    .button.secondary { color:var(--text); background:rgba(255,255,255,.035); }
+    .hero-art { min-height:360px; position:relative; display:grid; place-items:center; }
+    .orbit { position:absolute; width:min(100%,390px); aspect-ratio:1; border:1px solid rgba(169,155,255,.18); border-radius:50%; transform:rotate(-20deg); }
+    .orbit::before,.orbit::after { content:""; position:absolute; inset:12%; border:1px solid rgba(120,227,229,.15); border-radius:50%; }
+    .orbit::after { inset:25%; border-color:rgba(169,155,255,.18); }
+    .core-card { position:relative; width:min(310px,88%); padding:23px; border-radius:23px; background:linear-gradient(145deg,rgba(30,43,76,.94),rgba(15,24,45,.94)); border:1px solid rgba(181,194,255,.2); box-shadow:var(--shadow); transform:rotate(3deg); }
+    .window-top { display:flex; align-items:center; gap:6px; padding-bottom:17px; border-bottom:1px solid var(--line); }
+    .window-top i { width:7px;height:7px;border-radius:50%;background:#66759c; }
+    .window-top span { margin-left:auto; font: .62rem "DM Mono",monospace; color:var(--soft); }
+    .repo-line { display:flex; align-items:center; gap:11px; padding:15px 0 7px; }
+    .repo-icon { width:35px;height:35px;display:grid;place-items:center;border-radius:11px;background:rgba(169,155,255,.13);color:var(--violet);font-size:1.1rem; }
+    .repo-name { font-weight:700; font-size:.86rem; }
+    .repo-meta { color:var(--soft); font: .64rem "DM Mono",monospace; }
+    .meter { height:6px; background:#273452; border-radius:9px; overflow:hidden; margin:15px 0 7px; }
+    .meter b { display:block;width:78%;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--violet),var(--cyan)); }
+    .mini-row { display:flex;justify-content:space-between;color:var(--muted);font-size:.7rem; }
+    .float-tag { position:absolute; padding:10px 13px; border:1px solid var(--line); background:rgba(18,26,47,.88); border-radius:12px; box-shadow:var(--shadow); color:#d9e1f7; font: .68rem "DM Mono",monospace; }
+    .tag-a { top:13%; right:-2%; }.tag-b { bottom:14%; left:-4%; color:var(--mint); }
+    .archive-banner { display:flex; gap:15px; align-items:flex-start; padding:19px 21px; border:1px solid rgba(241,201,139,.22); border-radius:17px; background:rgba(241,201,139,.055); color:#e9d7b8; }
+    .archive-banner strong { display:block; color:#ffe0ad; margin-bottom:3px; }
+    .archive-banner p { margin:0; color:#c5b99f; font-size:.9rem; }
+    section { padding:72px 0; }
+    .section-kicker { color:var(--cyan); font:500 .7rem "DM Mono",monospace; letter-spacing:.12em; text-transform:uppercase; }
+    h2 { font:700 clamp(2rem,4vw,3.1rem)/1.1 Manrope,sans-serif; letter-spacing:-.055em; margin:12px 0 14px; }
+    .section-intro { max-width:670px; color:var(--muted); margin:0 0 34px; }
+    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+    .feature { padding:23px; border:1px solid var(--line); border-radius:var(--radius); background:linear-gradient(145deg,rgba(24,35,62,.72),rgba(15,23,43,.62)); min-height:190px; }
+    .feature .symbol { width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:rgba(169,155,255,.12);color:var(--violet);font-size:1.1rem;margin-bottom:17px; }
+    .feature h3 { margin:0 0 7px;font:700 1rem Manrope,sans-serif; }
+    .feature p { margin:0;color:var(--muted);font-size:.88rem; }
+    .architecture { display:grid;grid-template-columns:.8fr 1.2fr;gap:18px; }
+    .stack-card,.code-card { border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:25px; }
+    .stack-card h3 { margin:0 0 18px;font:700 1.05rem Manrope,sans-serif; }
+    .stack-list { display:flex;flex-wrap:wrap;gap:8px; }
+    .chip { border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:999px;padding:7px 11px;color:#c6d0e9;font-size:.78rem; }
+    .code-card { background:#0c1428; }
+    .code-head { display:flex;justify-content:space-between;align-items:center;color:var(--soft);font:.68rem "DM Mono",monospace;margin-bottom:18px; }
+    pre { margin:0;white-space:pre-wrap;color:#cbd7f3;font:.8rem/2 "DM Mono",monospace; }
+    .prompt { color:var(--mint); }
+    .status-grid { display:grid;grid-template-columns:1fr 1fr;gap:15px; }
+    .status-item { padding:21px;border-radius:17px;border:1px solid var(--line);background:rgba(255,255,255,.025); }
+    .status-item h3 { margin:0 0 7px;font-size:.96rem; }
+    .status-item p { margin:0;color:var(--muted);font-size:.87rem; }
+    .closing { text-align:center;padding:78px 24px;border:1px solid rgba(169,155,255,.2);border-radius:30px;background:radial-gradient(ellipse at 50% 0%,rgba(169,155,255,.13),transparent 65%),rgba(18,26,47,.62); }
+    .closing p { color:var(--muted);max-width:590px;margin:0 auto 25px; }
+    footer { display:flex;justify-content:space-between;gap:20px;align-items:center;padding:30px 0 42px;color:var(--soft);font-size:.78rem; }
+    .footer-links { display:flex;gap:18px; }
+    [hidden] { display:none !important; }
+    html[lang="fa"] body { font-family:"Vazirmatn","DM Sans",sans-serif; }
+    html[lang="fa"] .brand, html[lang="fa"] h1, html[lang="fa"] h2, html[lang="fa"] .feature h3 { font-family:"Vazirmatn",sans-serif; letter-spacing:0; }
+    html[lang="fa"] .hero { direction:rtl; }
+    html[lang="fa"] .nav { direction:rtl; }
+    html[lang="fa"] .archive-banner { direction:rtl; }
+    html[lang="fa"] .actions { direction:rtl; }
+    html[lang="fa"] .topbar, html[lang="fa"] footer { direction:rtl; }
+    html[lang="fa"] .section-intro, html[lang="fa"] .feature, html[lang="fa"] .status-item { text-align:right; }
+    html[lang="fa"] .hero-art { direction:ltr; }
+    html[lang="de"] body { font-family:"DM Sans",sans-serif; }
+    @media(max-width:850px) {
+      .hero { grid-template-columns:1fr;gap:24px;padding-top:65px; }
+      .hero-art { min-height:320px; }
+      .grid { grid-template-columns:repeat(2,1fr); }
+      .architecture { grid-template-columns:1fr; }
+      .nav a { display:none; }
+    }
+    @media(max-width:560px) {
+      .shell { width:min(100% - 30px,1120px); }
+      .topbar { flex-wrap:wrap; }
+      .hero { padding:52px 0 55px; }
+      .hero-art { min-height:285px; }
+      .grid,.status-grid { grid-template-columns:1fr; }
+      section { padding:52px 0; }
+      footer { align-items:flex-start;flex-direction:column; }
+      .float-tag.tag-a { right:0; }.float-tag.tag-b { left:0; }
+    }
+    @media(prefers-reduced-motion:reduce) { html{scroll-behavior:auto} *,*::before,*::after{transition:none!important} }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Haleacas home">
+        <span class="brand-mark">⌘</span><span>haleacas<span style="color:var(--cyan)">.</span></span>
+      </a>
+      <nav class="nav" aria-label="Main navigation">
+        <a href="#about" data-i18n="navAbout">About</a>
+        <a href="#capabilities" data-i18n="navCapabilities">Capabilities</a>
+        <a href="#architecture" data-i18n="navArchitecture">Architecture</a>
+        <a href="#status" data-i18n="navStatus">Status</a>
+      </nav>
+      <div class="lang-switch" role="group" aria-label="Choose language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="fa" aria-pressed="false">فا</button>
+        <button type="button" data-lang="de" aria-pressed="false">DE</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" id="about">
+        <div>
+          <div class="eyebrow"><span class="dot"></span><span data-i18n="eyebrow">A preserved open-source project</span></div>
+          <h1><span>Haleacas</span><span data-i18n="heroLine">Know your codebase.</span></h1>
+          <p class="lead" data-i18n="heroLead">An offline-first repository intelligence toolkit, created to bring the many moving parts of software projects into one calm, local workspace.</p>
+          <div class="actions">
+            <a class="button primary" href="https://github.com/mh3nj/haleacas" target="_blank" rel="noopener noreferrer"><span data-i18n="viewRepo">Explore the repository</span> ↗</a>
+            <a class="button secondary" href="https://github.com/mh3nj/haleacas/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" data-i18n="license">MIT License</a>
+          </div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="orbit"></div>
+          <div class="core-card">
+            <div class="window-top"><i></i><i></i><i></i><span>LOCAL WORKSPACE</span></div>
+            <div class="repo-line"><div class="repo-icon">⌘</div><div><div class="repo-name">your-project</div><div class="repo-meta">repository / overview</div></div></div>
+            <div class="repo-line"><div class="repo-icon" style="color:var(--cyan);background:rgba(120,227,229,.1)">⌁</div><div><div class="repo-name">Repository health</div><div class="repo-meta">signals · history · dependencies</div></div></div>
+            <div class="meter"><b></b></div>
+            <div class="mini-row"><span>Local context</span><span>in focus</span></div>
+          </div>
+          <div class="float-tag tag-a">GIT · LOCAL · CONTEXT</div>
+          <div class="float-tag tag-b">✳ &nbsp; Offline-first mindset</div>
+        </div>
+      </section>
+
+      <div class="archive-banner">
+        <div style="font-size:1.35rem">◷</div>
+        <div><strong data-i18n="archiveTitle">This project is no longer actively maintained here.</strong><p data-i18n="archiveText">Haleacas has been merged into a larger project. This repository remains available as a historical snapshot. It may still be useful to explore, learn from, or fork, but updates and support are not expected.</p></div>
+      </div>
+
+      <section id="capabilities">
+        <div class="section-kicker" data-i18n="capKicker">A workspace with a wider view</div>
+        <h2 data-i18n="capTitle">More context. Fewer scattered tools.</h2>
+        <p class="section-intro" data-i18n="capIntro">Haleacas was built around the everyday reality of working across multiple repositories. Its source includes workflows that bring local project information and selected external integrations together.</p>
+        <div class="grid">
+          <article class="feature"><div class="symbol">⌕</div><h3 data-i18n="f1Title">Repository discovery</h3><p data-i18n="f1Text">Scan configured locations and build a local picture of the repositories you work with.</p></article>
+          <article class="feature"><div class="symbol">◈</div><h3 data-i18n="f2Title">Health &amp; dependencies</h3><p data-i18n="f2Text">Surface repository findings and inspect dependency information from supported manifests.</p></article>
+          <article class="feature"><div class="symbol">⌁</div><h3 data-i18n="f3Title">Git history</h3><p data-i18n="f3Text">Explore repository timelines and commit-level context without leaving the workspace.</p></article>
+          <article class="feature"><div class="symbol">⌘</div><h3 data-i18n="f4Title">GitHub connection</h3><p data-i18n="f4Text">Optional access to repository details, releases, inbox items, and Actions information.</p></article>
+          <article class="feature"><div class="symbol">✳</div><h3 data-i18n="f5Title">README &amp; AI workflows</h3><p data-i18n="f5Text">Inspect and improve README content, with optional AI questions using selected context.</p></article>
+          <article class="feature"><div class="symbol">◉</div><h3 data-i18n="f6Title">Desktop companion</h3><p data-i18n="f6Text">A Tauri desktop shell with system-tray navigation and local application settings.</p></article>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <div class="section-kicker" data-i18n="archKicker">Under the hood</div>
+        <h2 data-i18n="archTitle">A lightweight desktop stack.</h2>
+        <p class="section-intro" data-i18n="archIntro">A web frontend meets a native Rust core. The core logic is kept separate from the desktop shell, making it easier to test without launching a GUI.</p>
+        <div class="architecture">
+          <div class="stack-card">
+            <h3 data-i18n="stackFrontend">Frontend</h3>
+            <div class="stack-list"><span class="chip">React</span><span class="chip">TypeScript</span><span class="chip">Vite</span><span class="chip">Tailwind CSS</span><span class="chip">React Router</span></div>
+            <h3 style="margin-top:27px" data-i18n="stackBackend">Desktop &amp; core</h3>
+            <div class="stack-list"><span class="chip">Tauri 2</span><span class="chip">Rust</span><span class="chip">SQLite</span><span class="chip">git2</span><span class="chip">walkdir</span></div>
+          </div>
+          <div class="code-card">
+            <div class="code-head"><span>GETTING STARTED</span><span>TERMINAL</span></div>
+            <pre><span class="prompt">$</span> npm install
+
+<span class="prompt">$</span> npx tauri dev
+
+<span style="color:var(--soft)"># Create a production bundle</span>
+<span class="prompt">$</span> npx tauri build</pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="status">
+        <div class="section-kicker" data-i18n="statusKicker">An honest project snapshot</div>
+        <h2 data-i18n="statusTitle">Preserved, not promised.</h2>
+        <p class="section-intro" data-i18n="statusIntro">This repository is shared for transparency and reuse. Please approach it as an early implementation whose dependencies and integrations may need attention.</p>
+        <div class="status-grid">
+          <div class="status-item"><h3 data-i18n="s1Title">Development</h3><p data-i18n="s1Text">No further updates are planned in this repository by the original author.</p></div>
+          <div class="status-item"><h3 data-i18n="s2Title">Completeness</h3><p data-i18n="s2Text">The codebase is an early implementation. Not every workflow should be assumed complete or production-ready.</p></div>
+          <div class="status-item"><h3 data-i18n="s3Title">Support</h3><p data-i18n="s3Text">Issues and pull requests may not receive a response. No compatibility or support commitment is offered.</p></div>
+          <div class="status-item"><h3 data-i18n="s4Title">Privacy mindset</h3><p data-i18n="s4Text">Designed around local-first repository data, with optional GitHub and explicitly configured AI integrations.</p></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="closing">
+          <div class="section-kicker" data-i18n="closingKicker">A project can move on</div>
+          <h2 data-i18n="closingTitle">The code stays. The story continues.</h2>
+          <p data-i18n="closingText">Haleacas is now part of a bigger journey. This little corner of GitHub stays open for anyone who wants to look around, learn something, or build on what was started here.</p>
+          <a class="button primary" href="https://github.com/mh3nj/haleacas" target="_blank" rel="noopener noreferrer"><span data-i18n="closingButton">Visit Haleacas on GitHub</span> ↗</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div>© Haleacas · <span data-i18n="footerText">An archived open-source project</span></div>
+      <div class="footer-links"><a href="https://github.com/mh3nj/haleacas" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="https://github.com/mh3nj/haleacas/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" data-i18n="license">MIT License</a></div>
+    </footer>
+  </div>
+
+  <script>
+    const copy = {
+      en: {
+        navAbout:"About",navCapabilities:"Capabilities",navArchitecture:"Architecture",navStatus:"Status",
+        eyebrow:"A preserved open-source project",heroLine:"Know your codebase.",
+        heroLead:"An offline-first repository intelligence toolkit, created to bring the many moving parts of software projects into one calm, local workspace.",
+        viewRepo:"Explore the repository",license:"MIT License",
+        archiveTitle:"This project is no longer actively maintained here.",
+        archiveText:"Haleacas has been merged into a larger project. This repository remains available as a historical snapshot. It may still be useful to explore, learn from, or fork, but updates and support are not expected.",
+        capKicker:"A workspace with a wider view",capTitle:"More context. Fewer scattered tools.",
+        capIntro:"Haleacas was built around the everyday reality of working across multiple repositories. Its source includes workflows that bring local project information and selected external integrations together.",
+        f1Title:"Repository discovery",f1Text:"Scan configured locations and build a local picture of the repositories you work with.",
+        f2Title:"Health & dependencies",f2Text:"Surface repository findings and inspect dependency information from supported manifests.",
+        f3Title:"Git history",f3Text:"Explore repository timelines and commit-level context without leaving the workspace.",
+        f4Title:"GitHub connection",f4Text:"Optional access to repository details, releases, inbox items, and Actions information.",
+        f5Title:"README & AI workflows",f5Text:"Inspect and improve README content, with optional AI questions using selected context.",
+        f6Title:"Desktop companion",f6Text:"A Tauri desktop shell with system-tray navigation and local application settings.",
+        archKicker:"Under the hood",archTitle:"A lightweight desktop stack.",archIntro:"A web frontend meets a native Rust core. The core logic is kept separate from the desktop shell, making it easier to test without launching a GUI.",
+        stackFrontend:"Frontend",stackBackend:"Desktop & core",
+        statusKicker:"An honest project snapshot",statusTitle:"Preserved, not promised.",
+        statusIntro:"This repository is shared for transparency and reuse. Please approach it as an early implementation whose dependencies and integrations may need attention.",
+        s1Title:"Development",s1Text:"No further updates are planned in this repository by the original author.",
+        s2Title:"Completeness",s2Text:"The codebase is an early implementation. Not every workflow should be assumed complete or production-ready.",
+        s3Title:"Support",s3Text:"Issues and pull requests may not receive a response. No compatibility or support commitment is offered.",
+        s4Title:"Privacy mindset",s4Text:"Designed around local-first repository data, with optional GitHub and explicitly configured AI integrations.",
+        closingKicker:"A project can move on",closingTitle:"The code stays. The story continues.",
+        closingText:"Haleacas is now part of a bigger journey. This little corner of GitHub stays open for anyone who wants to look around, learn something, or build on what was started here.",
+        closingButton:"Visit Haleacas on GitHub",footerText:"An archived open-source project"
+      },
+      fa: {
+        navAbout:"درباره",navCapabilities:"قابلیت‌ها",navArchitecture:"معماری",navStatus:"وضعیت پروژه",
+        eyebrow:"یک پروژه متن‌بازِ محفوظ‌مانده",heroLine:"کدبیس خودت را بهتر بشناس.",
+        heroLead:"ابزاری آفلاین‌محور برای شناخت و مدیریت مخازن نرم‌افزاری؛ با این هدف که بخش‌های مختلف پروژه‌ها را در یک فضای کاری محلی و منظم کنار هم بیاورد.",
+        viewRepo:"مشاهده مخزن پروژه",license:"مجوز MIT",
+        archiveTitle:"این مخزن دیگر به‌صورت فعال توسعه داده نمی‌شود.",
+        archiveText:"Haleacas در پروژه‌ای بزرگ‌تر ادغام شده است. این مخزن به‌عنوان تصویری از تاریخچه پروژه در دسترس می‌ماند؛ شاید برای بررسی، یادگیری یا ساخت یک فورک مفید باشد، اما انتظار انتشار به‌روزرسانی یا پشتیبانی نداشته باشید.",
+        capKicker:"دیدی گسترده‌تر از پروژه‌ها",capTitle:"اطلاعات بیشتر؛ ابزارهای پراکنده کمتر.",
+        capIntro:"Haleacas با توجه به واقعیت روزمره کار روی چندین مخزن نرم‌افزاری ساخته شد. کد آن شامل جریان‌هایی برای کنار هم آوردن اطلاعات محلی پروژه و برخی یکپارچه‌سازی‌های اختیاری است.",
+        f1Title:"کشف مخازن",f1Text:"مسیرهای انتخاب‌شده را اسکن کنید و تصویری محلی از مخازن کاری خود بسازید.",
+        f2Title:"سلامت و وابستگی‌ها",f2Text:"یافته‌های مربوط به مخزن را ببینید و وابستگی‌ها را از فایل‌های پیکربندی پشتیبانی‌شده بررسی کنید.",
+        f3Title:"تاریخچه Git",f3Text:"بدون خروج از محیط برنامه، خط زمانی مخزن و اطلاعات مربوط به کامیت‌ها را بررسی کنید.",
+        f4Title:"اتصال به GitHub",f4Text:"دسترسی اختیاری به اطلاعات مخازن، انتشارها، صندوق ورودی و وضعیت GitHub Actions.",
+        f5Title:"README و هوش مصنوعی",f5Text:"محتوای README را بررسی و بهبود دهید و در صورت تمایل با زمینه‌ای که خودتان انتخاب می‌کنید سؤال بپرسید.",
+        f6Title:"همراه دسکتاپ",f6Text:"پوسته دسکتاپ مبتنی بر Tauri با منوی سینی سیستم و تنظیمات محلی برنامه.",
+        archKicker:"درون پروژه",archTitle:"یک پشته سبک برای دسکتاپ.",archIntro:"رابط وب در کنار هسته بومی Rust قرار گرفته است. منطق اصلی از پوسته دسکتاپ جدا نگه داشته شده تا بدون اجرای رابط گرافیکی نیز آزمایش‌پذیر باشد.",
+        stackFrontend:"رابط کاربری",stackBackend:"دسکتاپ و هسته",
+        statusKicker:"وضعیت واقعی پروژه",statusTitle:"برای نگهداری؛ نه وعده‌های تازه.",
+        statusIntro:"این مخزن برای شفافیت و استفاده مجدد در دسترس است. آن را پیاده‌سازی اولیه‌ای بدانید که ممکن است وابستگی‌ها و یکپارچه‌سازی‌هایش به بازبینی نیاز داشته باشند.",
+        s1Title:"توسعه",s1Text:"نویسنده اصلی برنامه‌ای برای انتشار به‌روزرسانی‌های بیشتر در این مخزن ندارد.",
+        s2Title:"میزان تکمیل",s2Text:"کدبیس در مرحله پیاده‌سازی اولیه است؛ کامل یا آماده تولید بودن همه قابلیت‌ها تضمین نمی‌شود.",
+        s3Title:"پشتیبانی",s3Text:"ممکن است به Issueها و Pull Requestها پاسخی داده نشود. تعهدی برای سازگاری یا پشتیبانی وجود ندارد.",
+        s4Title:"نگاه به حریم خصوصی",s4Text:"طراحی بر پایه داده‌های محلی مخازن است و اتصال GitHub و هوش مصنوعی به‌صورت اختیاری و با پیکربندی کاربر انجام می‌شود.",
+        closingKicker:"گاهی یک پروژه مسیر تازه‌ای پیدا می‌کند",closingTitle:"کد باقی می‌ماند؛ داستان ادامه دارد.",
+        closingText:"Haleacas حالا بخشی از مسیری بزرگ‌تر است. این گوشه از GitHub همچنان برای کسانی باز می‌ماند که می‌خواهند آن را ببینند، چیزی یاد بگیرند یا بر پایه ایده‌هایش کار تازه‌ای بسازند.",
+        closingButton:"مشاهده Haleacas در GitHub",footerText:"یک پروژه متن‌بازِ آرشیوشده"
+      },
+      de: {
+        navAbout:"Über das Projekt",navCapabilities:"Funktionen",navArchitecture:"Architektur",navStatus:"Status",
+        eyebrow:"Ein bewahrtes Open-Source-Projekt",heroLine:"Verstehe deine Codebasis.",
+        heroLead:"Ein Offline-first-Werkzeug zur Repository-Analyse, das die vielen Bestandteile von Softwareprojekten in einem übersichtlichen, lokalen Arbeitsbereich zusammenführt.",
+        viewRepo:"Repository ansehen",license:"MIT-Lizenz",
+        archiveTitle:"Dieses Repository wird nicht mehr aktiv gepflegt.",
+        archiveText:"Haleacas wurde in ein größeres Projekt integriert. Dieses Repository bleibt als historischer Stand verfügbar. Es kann weiterhin zum Erkunden, Lernen oder Forken nützlich sein; neue Updates oder Support sind jedoch nicht zu erwarten.",
+        capKicker:"Ein umfassenderer Blick auf deine Projekte",capTitle:"Mehr Kontext. Weniger verstreute Werkzeuge.",
+        capIntro:"Haleacas entstand aus dem Alltag, in dem Entwickler mit vielen Repositories arbeiten. Der Quellcode enthält Abläufe, die lokale Projektinformationen mit ausgewählten externen Integrationen verbinden.",
+        f1Title:"Repositories entdecken",f1Text:"Konfigurierte Verzeichnisse durchsuchen und einen lokalen Überblick über deine Repositories erhalten.",
+        f2Title:"Zustand & Abhängigkeiten",f2Text:"Repository-Befunde anzeigen und Abhängigkeiten aus unterstützten Manifestdateien untersuchen.",
+        f3Title:"Git-Verlauf",f3Text:"Repository-Zeitachsen und Commit-Kontext direkt im Arbeitsbereich erkunden.",
+        f4Title:"GitHub-Anbindung",f4Text:"Optionaler Zugriff auf Repository-Details, Releases, Posteingang und GitHub-Actions-Informationen.",
+        f5Title:"README & KI-Abläufe",f5Text:"README-Inhalte prüfen und verbessern sowie optional KI-Fragen mit ausgewähltem Kontext stellen.",
+        f6Title:"Desktop-Begleiter",f6Text:"Eine Tauri-Desktop-Anwendung mit Systemleisten-Menü und lokalen Einstellungen.",
+        archKicker:"Technischer Aufbau",archTitle:"Ein schlanker Desktop-Stack.",archIntro:"Ein Web-Frontend trifft auf einen nativen Rust-Kern. Die Kernlogik ist von der Desktop-Hülle getrennt und kann dadurch auch ohne grafische Oberfläche getestet werden.",
+        stackFrontend:"Frontend",stackBackend:"Desktop & Kern",
+        statusKicker:"Ein ehrlicher Projektstand",statusTitle:"Bewahrt, nicht versprochen.",
+        statusIntro:"Dieses Repository bleibt für Transparenz und Wiederverwendung öffentlich. Bitte betrachte es als frühe Implementierung, deren Abhängigkeiten und Integrationen überprüft werden müssen.",
+        s1Title:"Entwicklung",s1Text:"Der ursprüngliche Autor plant keine weiteren Updates in diesem Repository.",
+        s2Title:"Vollständigkeit",s2Text:"Die Codebasis ist eine frühe Implementierung. Nicht jeder Ablauf ist vollständig oder produktionsreif.",
+        s3Title:"Support",s3Text:"Issues und Pull Requests erhalten möglicherweise keine Antwort. Es gibt keine Support- oder Kompatibilitätszusage.",
+        s4Title:"Datenschutzgedanke",s4Text:"Entwickelt mit lokal gespeicherten Repository-Daten sowie optionalen GitHub- und ausdrücklich konfigurierten KI-Integrationen.",
+        closingKicker:"Projekte dürfen weiterziehen",closingTitle:"Der Code bleibt. Die Geschichte geht weiter.",
+        closingText:"Haleacas ist inzwischen Teil einer größeren Reise. Diese kleine Ecke auf GitHub bleibt für alle offen, die sich umsehen, etwas lernen oder auf den ursprünglichen Ideen aufbauen möchten.",
+        closingButton:"Haleacas auf GitHub ansehen",footerText:"Ein archiviertes Open-Source-Projekt"
+      }
+    };
+
+    function setLanguage(lang) {
+      const strings = copy[lang] || copy.en;
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === "fa" ? "rtl" : "ltr";
+      document.querySelectorAll("[data-i18n]").forEach((node) => {
+        const key = node.getAttribute("data-i18n");
+        if (strings[key]) node.textContent = strings[key];
+      });
+      document.querySelectorAll("[data-lang]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.lang === lang));
+      });
+      try { localStorage.setItem("haleacas-language", lang); } catch (_) {}
+    }
+    document.querySelectorAll("[data-lang]").forEach((button) => {
+      button.addEventListener("click", () => setLanguage(button.dataset.lang));
+    });
+    let preferred = "en";
+    try { preferred = localStorage.getItem("haleacas-language") || "en"; } catch (_) {}
+    setLanguage(copy[preferred] ? preferred : "en");
+  </script>
+</body>
+</html>
