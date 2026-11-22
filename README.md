@@ -1,108 +1,213 @@
 # Haleacas
 
-> Offline-first repository intelligence toolkit for developers.
+> **An offline-first workspace for understanding the repositories around you.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-8b9cf6.svg)](LICENSE)
+[![Status: Archived](https://img.shields.io/badge/status-archived-64748b.svg)](#project-status)
+[![Built with Rust](https://img.shields.io/badge/backend-Rust-CE422B.svg)](https://www.rust-lang.org/)
+[![Built with Tauri](https://img.shields.io/badge/desktop-Tauri%202-24C8D8.svg)](https://tauri.app/)
+
+Haleacas is a desktop application concept and implementation for keeping local software repositories understandable and manageable. It brings repository discovery, health checks, Git context, dependency information, GitHub activity, and selected AI-assisted workflows into one place—without trying to replace Git, GitHub, or your editor.
+
+> **A note on the project’s status**
 >
-> "Haleacas" is a placeholder name. It's used consistently throughout the
-> code/config (package name, Tauri identifier, window title) so it can be
-> renamed globally later — see **Renaming** below.
+> Haleacas has been merged into a larger project and is no longer receiving updates from its original author. This repository remains public as a historical snapshot for people who used it, are curious about its implementation, or may find parts of the code useful. It is provided as-is: there is no promise of future releases, fixes, compatibility updates, or support.
 
-Haleacas sits above Git, GitHub, and your editor and understands the
-repositories around them: what they are, whether they're healthy, and what
-needs attention — without replacing any of those tools.
+---
 
-## Status
+## Contents
 
-This is an early, real, compiling implementation — not a mockup. See
-[`STATUS.md`](./STATUS.md) for exactly what's built vs. planned, phase by
-phase.
+- [What it is](#what-it-is)
+- [What is in the codebase](#what-is-in-the-codebase)
+- [Architecture and technology](#architecture-and-technology)
+- [Getting started](#getting-started)
+- [Development commands](#development-commands)
+- [Privacy and data flow](#privacy-and-data-flow)
+- [Project status and support](#project-status-and-support)
+- [Known limitations](#known-limitations)
+- [License](#license)
 
-## Stack
+## What it is
 
-- **Backend:** Rust + [Tauri 2](https://v2.tauri.app/), SQLite (via `rusqlite`),
-  `git2` for Git integration, `walkdir` for filesystem scanning.
-- **Frontend:** React + TypeScript + Vite + Tailwind CSS, `react-router-dom`
-  for navigation.
+Haleacas was designed around a simple idea: developers often work across many repositories, and each repository carries its own state, history, dependencies, conventions, and maintenance needs. Finding that context shouldn't require opening every tool separately.
 
-## Development setup
+The application brings several repository-oriented workflows together in a local desktop interface.
 
-Prerequisites:
+The codebase includes functionality and backend command surfaces for:
 
-- Node.js 18+ and npm
-- Rust 1.77.2+ (`rustup` recommended) and Cargo
-- Linux: `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libayatana-appindicator3-dev`,
-  `librsvg2-dev`, `libsoup-3.0-dev`, `libgit2-dev`, `pkg-config`, `build-essential`
-- Windows: the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/)
-  (WebView2 runtime + MSVC build tools)
+- **Repository discovery and scanning** — locate repositories under configured roots and inspect their local state.
+- **Repository health** — collect findings intended to help identify maintenance issues.
+- **Git context** — work with repository history, timelines, and commit-level statistics.
+- **Dependency inspection** — generate dependency reports from supported project manifests.
+- **Duplicate and search workflows** — inspect duplicate-related findings and search across discovered repositories.
+- **README assistance** — inspect, analyze, preview, and save README content.
+- **GitHub integration** — retrieve repository information, releases, inbox items, and Actions data when requested.
+- **GitHub Pages workflows** — inspect Pages-related information and create a Pages index.
+- **Optional AI assistance** — send an explicit question with selected repository context to a configured local AI-compatible provider.
+- **Desktop conveniences** — system-tray navigation, launch-at-login behavior, and configurable close behavior.
+
+These are descriptions of functionality represented in the source code, not a claim that every workflow is complete, production-ready, or equally tested. The repository should be treated as an early implementation.
+
+## What is in the codebase
+
+| Path | Purpose |
+| --- | --- |
+| `src/` | React + TypeScript frontend |
+| `src-tauri/` | Tauri desktop shell and Rust backend |
+| `src-tauri/crates/haleacas-core/` | Framework-independent repository, Git, and persistence logic |
+| `public/` | Static frontend assets |
+| `.github/workflows/` | Build automation |
+| `package.json` / `package-lock.json` | Frontend dependencies and scripts |
+| `Cargo.toml` files | Rust workspace and crate dependencies |
+| `LICENSE` | MIT license |
+
+The `haleacas-core` crate is deliberately separated from the Tauri shell. Its repository-scanning, Git, and persistence logic can be compiled and tested without starting the desktop GUI.
+
+## Architecture and technology
+
+**Frontend**
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+
+**Desktop application**
+- Tauri 2
+- Rust
+- SQLite through `rusqlite`
+- `git2` for Git integration
+- `walkdir` for filesystem traversal
+
+**Other integrations**
+- GitHub API access
+- Optional local AI-compatible endpoints
+- OS-native credential storage for supported platforms
+
+The frontend is built by Vite. Tauri packages the generated frontend together with the Rust application.
+
+## Getting started
+
+### Prerequisites
+
+- Node.js and npm
+- Rust toolchain and Cargo
+- The platform-specific prerequisites required by [Tauri 2](https://v2.tauri.app/start/prerequisites/)
+
+On Linux, the original development setup used WebKitGTK, GTK, AppIndicator, librsvg, libsoup, `pkg-config`, and a C/C++ build toolchain. Exact package names vary by distribution; consult the current Tauri prerequisites for your system.
+
+On Windows, install the Microsoft C++ build tools and WebView2 prerequisites described in the Tauri documentation.
+
+### Install dependencies
+
+From the repository root:
 
 ```bash
 npm install
-npm run tauri dev
 ```
 
-## Production build
+### Run the desktop application in development mode
 
 ```bash
-npm run tauri build
+npx tauri dev
 ```
 
-Produces a platform installer under `src-tauri/target/release/bundle/`.
-Windows distribution is the primary target per the product spec; the
-`tauri.conf.json` bundle config currently targets `"all"` and should be
-narrowed once code signing / installer details are finalized.
-
-## Testing
+### Build a production bundle
 
 ```bash
-# Domain logic (fast — no GUI toolchain needed)
-cd src-tauri && cargo test -p haleacas-core
-
-# Includes tests that hit a real GitHub API and a real local AI provider
-# (both skipped by default — see STATUS.md for what each needs to run)
-cd src-tauri && cargo test -p haleacas-core -- --ignored
-
-# Tauri shell — type-checked only for now, see STATUS.md
-cd src-tauri && cargo check -p app
-
-# Frontend
-npm run build   # type-checks via tsc -b, then builds
+npx tauri build
 ```
 
-`haleacas-core` (repository scanning, Git integration, persistence) is a
-plain Rust crate with no Tauri/GUI dependency, specifically so its test
-suite compiles and links quickly and can run in CI without a display —
-see `STATUS.md` for the current test count and what's still uncovered.
+Packaged installers are written under:
 
-## Privacy
+```text
+src-tauri/target/release/bundle/
+```
 
-Repository discovery, Git reads, and the SQLite cache are local-only and
-never leave your machine. Two things are optional and off by default:
+The available bundle formats depend on the operating system and its packaging prerequisites.
 
-- **GitHub** — only contacted when you associate a repository with GitHub
-  functionality (the GitHub tab/Inbox); public-repo data is fetched
-  unauthenticated unless you connect a personal access token, which is
-  stored in your OS keychain, never in Haleacas' own database.
-- **Local AI** — off until you configure a provider (LM Studio, Ollama, or
-  a custom OpenAI-compatible endpoint) in Settings. All three are local
-  servers on your own machine, not cloud services; no API key is used.
-  Nothing about a repository is sent until you explicitly ask a question
-  in that repository's AI tab, and only two kinds of context exist:
-  repository facts Haleacas already computed, or specific files you've
-  selected — never the whole repository, and the exact text sent is
-  always shown alongside the answer. Cloud AI providers are not
-  implemented.
+## Development commands
 
-## Renaming from "Haleacas"
+The npm scripts currently defined in `package.json` are:
 
-Search-and-replace these identifiers once a final name is chosen:
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the Vite development server |
+| `npm run build` | Type-check and build the frontend |
+| `npm run lint` | Run Oxlint |
+| `npm run preview` | Preview the built frontend |
 
-- `productName` / `identifier` in `src-tauri/tauri.conf.json`
-- `name` in `package.json` and `src-tauri/Cargo.toml`
-- `name`/`description` in `src-tauri/crates/haleacas-core/Cargo.toml`
-- `ProjectDirs::from("dev", "haleacas", "Haleacas")` in
-  `src-tauri/crates/haleacas-core/src/db/mod.rs`
-- Window title in `index.html` and `tauri.conf.json`
-- Tray tooltip string in `src-tauri/src/system/tray.rs`
+Rust core tests:
+
+```bash
+cd src-tauri
+cargo test -p haleacas-core
+```
+
+The repository also contains ignored tests that may contact a real GitHub API or a local AI provider. They are not part of the default test run:
+
+```bash
+cd src-tauri
+cargo test -p haleacas-core -- --ignored
+```
+
+Check the test source and configure the required services before running ignored tests.
+
+Check the Tauri application crate:
+
+```bash
+cd src-tauri
+cargo check -p app
+```
+
+Build the frontend independently:
+
+```bash
+npm run build
+```
+
+> These commands describe the checked-in project configuration. Because this repository is archived, newer operating systems, toolchains, or dependency releases may require adjustments.
+
+## Privacy and data flow
+
+Haleacas was designed with a local-first approach.
+
+- Repository discovery, local Git inspection, and the SQLite cache are intended to remain on the user's machine.
+- GitHub access is optional and is used for GitHub-related workflows. Public repository information can be fetched without authentication; connecting a personal access token enables authenticated access.
+- The original project documentation states that a connected GitHub token is stored using the operating system's credential store rather than in the application's SQLite database.
+- AI assistance is optional. The original design describes local AI-compatible providers such as Ollama, LM Studio, or a custom OpenAI-compatible endpoint.
+- AI requests are explicit: the user asks a question from a repository's AI workflow, and the intended context is repository facts already computed by the application or files specifically selected by the user.
+
+This section describes the documented design and checked-in integration approach. It is not an independent security audit or a guarantee that every build and configuration behaves identically. Review the code and your local configuration before using the application with sensitive repositories or credentials.
+
+## Project status and support
+
+**Status: archived / no longer maintained by the original author.**
+
+Haleacas has been merged into a larger project. Development continues, if at all, in that separate project—not in this repository.
+
+- This repository is retained for reference.
+- Issues and pull requests may not receive a response.
+- There may be unresolved bugs, incomplete features, or outdated dependencies.
+- No security response time or compatibility commitment is offered here.
+- If you are considering a fork, please review the code, dependencies, and security implications first.
+
+If you arrived here looking for the actively developed successor, check the original author's GitHub profile and repositories for the current project. No successor URL is specified in this archive README.
+
+## Known limitations
+
+- This is an early implementation, not a claim of a finished or production-hardened product.
+- The feature set and level of test coverage vary across modules.
+- Some integration tests require external services and are ignored by default.
+- Platform packaging and signing may need additional setup.
+- The archived dependency versions may become incompatible with future toolchains.
 
 ## License
 
-MIT — see [`LICENSE`](./LICENSE).
+Haleacas is distributed under the [MIT License](LICENSE).
+
+You are welcome to study, fork, and adapt the code under the terms of that license.
+
+---
+
+*Thanks to everyone who explored, tested, or found something useful in Haleacas. Even when a project moves on, its code can still be a useful starting point for someone else.*
