@@ -1,0 +1,39 @@
+[package]
+name = "haleacas-core"
+version = "0.1.0"
+description = "Framework-agnostic repository scanning, Git integration, and local persistence for Haleacas"
+edition = "2021"
+rust-version = "1.77.2"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rusqlite = { version = "0.31", features = ["bundled"] }
+git2 = { version = "0.19", default-features = false }
+walkdir = "2.5"
+chrono = { version = "0.4", features = ["serde"] }
+toml = "0.8"
+anyhow = "1.0"
+directories = "5.0"
+sha2 = "0.10"
+regex = "1.10"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls-native-roots"] }
+# Real YAML for pubspec.yaml (Dart/Flutter). Tagged "+deprecated"
+# upstream (archived by its maintainer in 2024) but still parses
+# standard YAML correctly; see dependencies/pubspec.rs for why it's
+# still preferred over a hand-rolled scan for this format.
+serde_yaml = "0.9"
+# Real XML for pom.xml (Maven). See dependencies/pom.rs.
+quick-xml = { version = "0.36", features = ["serialize"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
+
+[dev-dependencies]
+tempfile = "3.10"

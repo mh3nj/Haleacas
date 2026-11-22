@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-canvas: #f7f7f5;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-border: #e5e4e0;
+  --color-border-strong: #d3d2cc;
+  --color-ink: #17181a;
+  --color-muted: #6b6e74;
+  --color-faint: #9a9da3;
+  --color-accent: #2f8f86;
+  --color-accent-strong: #226e67;
+  --color-healthy: #2f9e5b;
+  --color-warning: #b9791e;
+  --color-critical: #c93f3f;
+}
+
+.dark {
+  --color-canvas: #0a0b0d;
+  --color-surface: #121317;
+  --color-surface-raised: #16181c;
+  --color-border: #24262b;
+  --color-border-strong: #34373d;
+  --color-ink: #e8e9eb;
+  --color-muted: #8b8f97;
+  --color-faint: #5a5d63;
+  --color-accent: #4fb8ae;
+  --color-accent-strong: #6fd0c6;
+  --color-healthy: #4fb871;
+  --color-warning: #e8a33d;
+  --color-critical: #e5484d;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-feature-settings: "tnum" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* README Studio's GitHub-style preview pane (spec section 16). No
+   typography plugin is installed — these are hand-written, scoped to
+   `.markdown-body` only, and use the same theme variables as the rest
+   of the app rather than a separate design system. */
+.markdown-body {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  font-weight: 600;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.3em;
+}
+.markdown-body h1:first-child,
+.markdown-body h2:first-child,
+.markdown-body h3:first-child {
+  margin-top: 0;
+}
+.markdown-body h1 {
+  font-size: 1.5em;
+}
+.markdown-body h2 {
+  font-size: 1.2em;
+}
+.markdown-body h3 {
+  font-size: 1.05em;
+  border-bottom: none;
+}
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body blockquote {
+  margin: 0.6em 0;
+}
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.5em;
+}
+.markdown-body a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+.markdown-body code {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.85em;
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+}
+.markdown-body pre {
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+}
+.markdown-body pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.markdown-body blockquote {
+  border-left: 3px solid var(--color-border-strong);
+  padding-left: 1em;
+  color: var(--color-muted);
+}
+.markdown-body img {
+  max-width: 100%;
+}
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.2em 0;
+}

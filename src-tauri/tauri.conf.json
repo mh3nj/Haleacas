@@ -1,0 +1,54 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Haleacas",
+  "version": "0.1.0",
+  "identifier": "dev.haleacas.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Haleacas",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 620,
+        "minHeight": 480,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "DeveloperTool",
+    "shortDescription": "Offline-first repository intelligence toolkit",
+    "longDescription": "Haleacas keeps your local repositories in one tidy place: what they are, how healthy they look, and what needs a nudge. It works offline and sits alongside Git, GitHub and your editor.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": false
+      }
+    },
+    "linux": {
+      "deb": {},
+      "rpm": {}
+    },
+    "macOS": {
+      "dmg": {}
+    }
+  }
+}

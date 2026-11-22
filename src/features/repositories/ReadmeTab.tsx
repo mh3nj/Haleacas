@@ -1,0 +1,559 @@
+import { useEffect, useRef, useState } from "react";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
+import { api } from "../../lib/api";
+import type {
+  CategoryScore,
+  ReadmeCatalogEntry,
+  ReadmeSavePreview,
+  ReadmeSection,
+  RepositoryFingerprint,
+} from "../../types";
+import { HealthScore } from "../../components/HealthScore";
+
+type ViewTab = "edit" | "markdown" | "preview" | "quality";
+
+const VIEWS: { key: ViewTab; label: string }[] = [
+  { key: "edit", label: "Edit" },
+  { key: "markdown", label: "Markdown" },
+  { key: "preview", label: "Preview" },
+  { key: "quality", label: "Quality" },
+];
+
+function newSectionId(): string {
+  return `section-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function ToolbarButton({
+  label,
+  title,
+  onClick,
+}: {
+  label: string;
+  title: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      className="rounded border border-border px-2 py-0.5 font-mono text-2xs text-muted hover:bg-surface-raised hover:text-ink"
+    >
+      {label}
+    </button>
+  );
+}
+
+/// Composes README Studio (spec section 16) for a single repository.
+/// Deliberately starts from `readme_studio::generate_sections` (real
+/// detected facts) rather than reading the repository's existing
+/// README.md — see the backend module's doc comment for why round-
+/// tripping arbitrary existing Markdown into these fixed section kinds
+/// isn't attempted. Saving always shows exactly what would be written
+/// first, via `previewReadmeSave`, before `saveReadme` ever touches disk.
+export function ReadmeTab({
+  repo,
+  onRepoUpdated,
+}: {
+  repo: RepositoryFingerprint;
+  onRepoUpdated: () => void;
+}) {
+  const [sections, setSections] = useState<ReadmeSection[] | null>(null);
+  const [catalog, setCatalog] = useState<ReadmeCatalogEntry[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<ViewTab>("edit");
+  const [markdown, setMarkdown] = useState<string | null>(null);
+  const [quality, setQuality] = useState<CategoryScore | null>(null);
+  const [savePreview, setSavePreview] = useState<ReadmeSavePreview | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const dragId = useRef<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const draftKey = `haleacas.readme-draft.${repo.id}`;
+
+  useEffect(() => {
+    api.getReadmeSections(repo.id).then((s) => {
+      // Restore an unsaved Studio composition from a previous session
+      // when one exists — otherwise a restart silently loses work.
+      try {
+        const raw = window.localStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw) as ReadmeSection[];
+          if (Array.isArray(draft) && draft.length > 0) {
+            setSections(draft);
+            setSelectedId(draft[0]?.id ?? null);
+            setDraftRestored(true);
+            return;
+          }
+        }
+      } catch {
+        // Corrupt draft — fall through to the fresh backend sections.
+      }
+      setSections(s);
+      setSelectedId(s[0]?.id ?? null);
+    });
+    api.getReadmeCatalog().then(setCatalog);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repo.id]);
+
+  // Persist the in-progress composition locally on every change so a
+  // restart never loses it. Cleared on successful save or explicit
+  // discard — never sent anywhere, localStorage only.
+  useEffect(() => {
+    if (!sections) return;
+    try {
+      window.localStorage.setItem(draftKey, JSON.stringify(sections));
+    } catch {
+      // Storage full/blocked — the Studio still works, just without
+      // draft persistence for this session.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections]);
+
+  useEffect(() => {
+    if (!sections) return;
+    if (view === "markdown" || view === "preview") {
+      api.renderReadmeMarkdown(sections).then(setMarkdown);
+    } else if (view === "quality") {
+      api
+        .renderReadmeMarkdown(sections)
+        .then((md) => api.analyzeReadmeText(md, repo.license !== null).then(setQuality));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, sections]);
+
+  if (sections === null) return null;
+
+  const selected = sections.find((s) => s.id === selectedId) ?? null;
+  const remainingCatalog = catalog.filter((c) => !sections.some((s) => s.kind === c.kind));
+
+  const updateSelected = (patch: Partial<ReadmeSection>) => {
+    if (!selected) return;
+    setSaved(false);
+    setSections(
+      sections.map((s) => (s.id === selected.id ? { ...s, ...patch, autoGenerated: false } : s))
+    );
+  };
+
+  const removeSection = (id: string) => {
+    setSaved(false);
+    const next = sections.filter((s) => s.id !== id);
+    setSections(next);
+    if (selectedId === id) setSelectedId(next[0]?.id ?? null);
+  };
+
+  const addSection = (kind: string) => {
+    const entry = catalog.find((c) => c.kind === kind);
+    if (!entry) return;
+    const section: ReadmeSection = {
+      id: newSectionId(),
+      kind: entry.kind,
+      title: entry.defaultTitle,
+      content: "",
+      autoGenerated: false,
+    };
+    setSaved(false);
+    setSections([...sections, section]);
+    setSelectedId(section.id);
+    setView("edit");
+  };
+
+  // Unlike `addSection`, not driven by the catalog — spec section 16
+  // lists 16 named sections plus a distinct "custom" one a user can add
+  // more than one of, each with its own typed title. No separate
+  // prompt/modal for the title: the section is added with a sensible
+  // default and immediately selected in Edit view, where the title
+  // field is already a plain editable input — renaming it there IS the
+  // "user-typed title" the spec asks for, no new UI needed for it.
+  const addCustomSection = () => {
+    const section: ReadmeSection = {
+      id: newSectionId(),
+      kind: "custom",
+      title: "Custom Section",
+      content: "",
+      autoGenerated: false,
+    };
+    setSaved(false);
+    setSections([...sections, section]);
+    setSelectedId(section.id);
+    setView("edit");
+  };
+
+  const reorder = (draggedId: string, overId: string) => {
+    if (draggedId === overId) return;
+    const list = [...sections];
+    const from = list.findIndex((s) => s.id === draggedId);
+    const to = list.findIndex((s) => s.id === overId);
+    if (from === -1 || to === -1) return;
+    const [moved] = list.splice(from, 1);
+    list.splice(to, 0, moved);
+    setSaved(false);
+    setSections(list);
+  };
+
+  const move = (id: string, direction: -1 | 1) => {
+    const list = [...sections];
+    const from = list.findIndex((s) => s.id === id);
+    const to = from + direction;
+    if (from === -1 || to < 0 || to >= list.length) return;
+    [list[from], list[to]] = [list[to], list[from]];
+    setSaved(false);
+    setSections(list);
+  };
+
+  const doPreviewSave = async () => {
+    setError(null);
+    try {
+      const p = await api.previewReadmeSave(repo.id, sections);
+      setSavePreview(p);
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  const doSave = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.saveReadme(repo.id, sections);
+      setSavePreview(null);
+      setSaved(true);
+      setDraftRestored(false);
+      try {
+        window.localStorage.removeItem(draftKey);
+      } catch {
+        // Non-fatal — saving to disk already succeeded.
+      }
+      onRepoUpdated();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const discardDraft = async () => {
+    try {
+      window.localStorage.removeItem(draftKey);
+    } catch {
+      // Ignore — we'll still reload fresh sections below.
+    }
+    setDraftRestored(false);
+    setSaved(false);
+    const fresh = await api.getReadmeSections(repo.id);
+    setSections(fresh);
+    setSelectedId(fresh[0]?.id ?? null);
+  };
+
+  // Markdown helpers for the section editor below. Each operates on the
+  // textarea's current selection (or cursor, when nothing is selected)
+  // and writes back through `updateSelected`, so toolbar edits are real
+  // user edits: they clear `autoGenerated` and persist to the draft like
+  // typing does. Buttons, not shortcuts-only, so this stays keyboard-
+  // and mouse-accessible like the rest of the Studio.
+  const applyToTextarea = (
+    fn: (value: string, start: number, end: number) => { value: string; caret: [number, number] }
+  ) => {
+    const el = textareaRef.current;
+    if (!selected || !el) return;
+    const result = fn(selected.content, el.selectionStart ?? 0, el.selectionEnd ?? 0);
+    updateSelected({ content: result.value });
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(result.caret[0], result.caret[1]);
+    });
+  };
+
+  const wrapSelection = (before: string, after: string, placeholder: string) => {
+    applyToTextarea((value, start, end) => {
+      if (start === end) {
+        const value2 = value.slice(0, start) + before + placeholder + after + value.slice(end);
+        return { value: value2, caret: [start + before.length, start + before.length + placeholder.length] };
+      }
+      const value2 = value.slice(0, start) + before + value.slice(start, end) + after + value.slice(end);
+      return { value: value2, caret: [start + before.length, end + before.length] };
+    });
+  };
+
+  const prefixLines = (prefix: string) => {
+    applyToTextarea((value, start, end) => {
+      const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+      const lineEnd = value.indexOf("\n", end);
+      const stop = lineEnd === -1 ? value.length : lineEnd;
+      const block = value
+        .slice(lineStart, stop)
+        .split("\n")
+        .map((line) => (line.startsWith(prefix) ? line : prefix + line))
+        .join("\n");
+      const value2 = value.slice(0, lineStart) + block + value.slice(stop);
+      const added = block.length - (stop - lineStart);
+      return { value: value2, caret: [start + prefix.length, end + added] };
+    });
+  };
+
+  const insertSnippet = (snippet: string, selectFrom: number, selectTo: number) => {
+    applyToTextarea((value, start) => {
+      const value2 = value.slice(0, start) + snippet + value.slice(start);
+      return { value: value2, caret: [start + selectFrom, start + selectTo] };
+    });
+  };
+
+  return (
+    <div className="max-w-4xl space-y-4">
+      <p className="text-sm text-muted">
+        Composes a README from {repo.name}&rsquo;s detected facts. It does not
+        read your existing README.md, so opening the Studio never loses
+        anything already written there. Saving always shows exactly what
+        would be written first. Unsaved work is kept locally between sessions.
+      </p>
+      {draftRestored && (
+        <p className="rounded border border-warning px-3 py-1.5 text-sm text-warning">
+          Restored your unsaved draft from last time.{" "}
+          <button onClick={discardDraft} className="underline hover:text-ink">
+            Discard and start fresh
+          </button>
+        </p>
+      )}
+
+      <div className="flex gap-4">
+        <div className="w-56 shrink-0 space-y-1">
+          {sections.map((s, i) => (
+            <div
+              key={s.id}
+              draggable
+              onDragStart={() => {
+                dragId.current = s.id;
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => {
+                if (dragId.current) reorder(dragId.current, s.id);
+                dragId.current = null;
+              }}
+              onClick={() => {
+                setSelectedId(s.id);
+                setView("edit");
+              }}
+              className={`flex cursor-grab items-center justify-between border px-2 py-1.5 text-sm active:cursor-grabbing ${
+                selectedId === s.id && view === "edit"
+                  ? "border-accent bg-surface-raised"
+                  : "border-border hover:bg-surface-raised"
+              }`}
+            >
+              <span className="truncate">
+                {s.title || "(untitled)"}
+                {s.kind === "custom" && (
+                  <span className="ml-1 text-2xs text-faint">· Custom</span>
+                )}
+              </span>
+              <div className="flex shrink-0 items-center gap-1">
+                {s.content.trim() === "" && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-warning" title="Empty section" />
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    move(s.id, -1);
+                  }}
+                  disabled={i === 0}
+                  className="text-faint hover:text-ink disabled:opacity-20"
+                  aria-label={`Move ${s.title} up`}
+                  title="Move up"
+                >
+                  ↑
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    move(s.id, 1);
+                  }}
+                  disabled={i === sections.length - 1}
+                  className="text-faint hover:text-ink disabled:opacity-20"
+                  aria-label={`Move ${s.title} down`}
+                  title="Move down"
+                >
+                  ↓
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeSection(s.id);
+                  }}
+                  className="text-faint hover:text-critical"
+                  aria-label={`Remove ${s.title}`}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {remainingCatalog.length > 0 && (
+            <select
+              value=""
+              onChange={(e) => e.target.value && addSection(e.target.value)}
+              className="w-full rounded border border-border bg-canvas px-2 py-1.5 text-sm text-muted"
+            >
+              <option value="">+ Add section…</option>
+              {remainingCatalog.map((c) => (
+                <option key={c.kind} value={c.kind}>
+                  {c.defaultTitle}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={addCustomSection}
+            className="w-full rounded border border-dashed border-border px-2 py-1.5 text-sm text-muted hover:bg-surface-raised hover:text-ink"
+          >
+            + Add custom section…
+          </button>
+        </div>
+
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex items-center gap-1 border-b border-border">
+            {VIEWS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setView(t.key)}
+                className={`border-b-2 px-2 py-1.5 text-sm ${
+                  view === t.key
+                    ? "border-accent text-ink"
+                    : "border-transparent text-muted hover:text-ink"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+            <div className="ml-auto flex items-center gap-2 pb-1.5">
+              {saved && <span className="text-2xs text-healthy">Saved</span>}
+              <button
+                onClick={doPreviewSave}
+                disabled={sections.length === 0}
+                className="rounded bg-accent px-2.5 py-1 text-sm font-medium text-canvas disabled:opacity-40"
+              >
+                Save README.md
+              </button>
+            </div>
+          </div>
+
+          {view === "edit" &&
+            (selected ? (
+              <div className="space-y-2">
+                <input
+                  value={selected.title}
+                  onChange={(e) => updateSelected({ title: e.target.value })}
+                  className="w-full rounded border border-border bg-canvas px-2 py-1.5 text-sm font-medium"
+                />
+                <div className="flex flex-wrap gap-1">
+                  <ToolbarButton label="B" title="Bold (**text**)" onClick={() => wrapSelection("**", "**", "bold text")} />
+                  <ToolbarButton label="I" title="Italic (*text*)" onClick={() => wrapSelection("*", "*", "italic text")} />
+                  <ToolbarButton label="<>" title="Inline code (`code`)" onClick={() => wrapSelection("`", "`", "code")} />
+                  <ToolbarButton label="H" title="Heading (### )" onClick={() => prefixLines("### ")} />
+                  <ToolbarButton label="•" title="Bulleted list (- )" onClick={() => prefixLines("- ")} />
+                  <ToolbarButton label="1." title="Numbered list (1. )" onClick={() => prefixLines("1. ")} />
+                  <ToolbarButton label="❝" title="Quote (> )" onClick={() => prefixLines("> ")} />
+                  <ToolbarButton label="Link" title="Link ([text](url))" onClick={() => insertSnippet("[link text](https://)", 1, 10)} />
+                  <ToolbarButton label="Image" title="Image (![alt](path or url))" onClick={() => insertSnippet("![alt text](image.png)", 2, 10)} />
+                  <ToolbarButton label="{ }" title="Code block (```fence)" onClick={() => insertSnippet("```\ncode here\n```", 4, 13)} />
+                  <ToolbarButton label="—" title="Horizontal rule (---)" onClick={() => insertSnippet("\n---\n", 5, 5)} />
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  value={selected.content}
+                  onChange={(e) => updateSelected({ content: e.target.value })}
+                  rows={16}
+                  placeholder="Markdown content for this section…"
+                  className="w-full rounded border border-border bg-canvas px-2 py-1.5 font-mono text-sm"
+                />
+                <p className="text-2xs text-faint">
+                  Tip: images work as Markdown (`![alt](path)`), render in Preview, and count
+                  toward the Quality screenshots check. Relative paths display on GitHub, just not
+                  in this Preview pane. Absolute URLs display in both.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-faint">No sections yet. Add one to get started.</p>
+            ))}
+
+          {view === "markdown" && (
+            <pre className="max-h-[32rem] overflow-y-auto border border-border bg-canvas p-3 font-mono text-2xs whitespace-pre-wrap">
+              {markdown ?? "Loading…"}
+            </pre>
+          )}
+
+          {view === "preview" && markdown !== null && (
+            <div
+              className="markdown-body max-h-[32rem] overflow-y-auto border border-border bg-canvas p-4"
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(marked.parse(markdown, { async: false })),
+              }}
+            />
+          )}
+
+          {view === "quality" && quality !== null && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 border border-border px-3 py-2">
+                <HealthScore value={quality.score} />
+                <span className="text-sm text-muted">
+                  README Health is Haleacas own scoring of this
+                  composition, not an industry standard. Recomputed from
+                  whatever is currently in the editor, not the saved file.
+                </span>
+              </div>
+              <div className="divide-y divide-border border border-border">
+                {quality.checks.map((check) => (
+                  <div key={check.label} className="px-3 py-1.5 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className={check.passed ? "text-healthy" : "text-critical"}>
+                        {check.passed ? "+" : "−"}
+                      </span>
+                      <span>{check.label}</span>
+                    </div>
+                    <div className="pl-4 text-2xs text-faint">{check.detail}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && <p className="text-sm text-critical">{error}</p>}
+        </div>
+      </div>
+
+      {savePreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
+          <div className="max-h-[80vh] w-full max-w-2xl overflow-y-auto border border-border bg-canvas p-4 shadow-lg">
+            <h3 className="text-sm font-semibold">
+              {savePreview.exists
+                ? "This will overwrite your existing README.md"
+                : "This will create README.md"}
+            </h3>
+            <pre className="mt-2 max-h-96 overflow-y-auto border border-border bg-surface p-2 font-mono text-2xs whitespace-pre-wrap">
+              {savePreview.content}
+            </pre>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={doSave}
+                disabled={busy}
+                className="rounded bg-accent px-2.5 py-1 text-sm font-medium text-canvas disabled:opacity-40"
+              >
+                {savePreview.exists ? "Overwrite" : "Create"} README.md
+              </button>
+              <button
+                onClick={() => setSavePreview(null)}
+                className="rounded border border-border px-2.5 py-1 text-sm hover:bg-surface-raised"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
