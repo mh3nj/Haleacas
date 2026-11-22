@@ -1,8 +1,11 @@
-# Haleacas
+# Haleacas 
 
 Haleacas is a desktop app for keeping track of local software repositories. It brings repository discovery, Git history, dependency information, and a few GitHub tools into one place.
 
 The app is built with Tauri, Rust, React, and TypeScript. Its Rust core handles much of the repository and Git work, while the frontend provides the desktop interface.
+
+<img width="5846" height="1032" alt="Asset 12@5x" src="https://github.com/user-attachments/assets/5bd9ba7d-d560-4266-94cd-aa094ec563ea" />
+
 
 ## Project status
 
