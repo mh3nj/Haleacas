@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Rust build artifacts
+/src-tauri/target/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
