@@ -47,21 +47,22 @@
     .topbar { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:26px 0; }
     .brand { display:flex; align-items:center; gap:12px; font-family:Manrope,sans-serif; font-weight:800; letter-spacing:-.04em; font-size:1.1rem; }
     .brand-mark {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 11px;
-  overflow: hidden;
-  background: transparent;
-  border: none;
-}
-.brand-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .brand-logo {
+      display: block;
+      width: 38px;
+      height: 38px;
+      max-width: 38px;
+      max-height: 38px;
+      object-fit: contain;
+    }
     .nav { display:flex; align-items:center; gap:22px; color:var(--muted); font-size:.9rem; }
     .nav a:hover { color:var(--text); }
     .lang-switch { display:flex; padding:4px; gap:3px; border:1px solid var(--line); border-radius:999px; background:rgba(10,16,32,.72); }
@@ -154,11 +155,11 @@
   <div class="shell">
     <header class="topbar">
       <a class="brand" href="#" aria-label="Haleacas home">
-  <span class="brand-mark">
-    <img src="./logo.png" alt="Haleacas" class="brand-logo">
-  </span>
-  <span>haleacas<span style="color:var(--cyan)">.</span></span>
-</a>
+        <span class="brand-mark">
+          <img src="./logo.png" alt="" class="brand-logo">
+        </span>
+        <span>haleacas<span style="color:var(--cyan)">.</span></span>
+      </a>
       <nav class="nav" aria-label="Main navigation">
         <a href="#about" data-i18n="navAbout">About</a>
         <a href="#capabilities" data-i18n="navCapabilities">Features</a>
